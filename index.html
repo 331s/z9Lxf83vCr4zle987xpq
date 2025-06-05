@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>CS2 Madalya Hesaplayıcı</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      padding-top: 40px;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .card {
+      padding: 25px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .highlight {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #28a745;
+    }
+    .dark-mode {
+      background-color: #121212 !important;
+      color: #f1f1f1 !important;
+    }
+    .dark-card {
+      background-color: #1e1e1e !important;
+      color: #ffffff !important;
+    }
+    .mode-toggle, .language-toggle {
+      position: fixed;
+      top: 20px;
+      z-index: 999;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+    .mode-toggle { right: 20px; }
+    .language-toggle { right: 70px; }
+    .btn-group .btn.active {
+      border: 3px solid white;
+    }
+  </style>
+</head>
+<body>
+
+<button onclick="toggleDarkMode()" id="toggleBtn" class="btn btn-outline-secondary mode-toggle">🌙&nbsp;</button>
+<button onclick="toggleLanguage()" id="languageBtn" class="btn btn-outline-secondary language-toggle">🇹🇷&nbsp;</button>
+
+<div class="container">
+  <div class="card" id="mainCard">
+    <h2 class="text-center mb-4" data-i18n="title">🎖️ CS2 Madalya Hesaplayıcı</h2>
+
+    <div class="mb-3">
+      <label class="form-label" data-i18n="select_mode">🎮 Oyun Modunu Seç:</label>
+      <div class="btn-group w-100 flex-wrap" id="modeButtons">
+        <button class="btn btn-outline-success" data-mode="competitive" data-i18n="mode_competitive">Rekabetçi</button>
+        <button class="btn btn-outline-success" data-mode="premier" data-i18n="mode_premier">Premier</button>
+        <button class="btn btn-outline-success" data-mode="wingman" data-i18n="mode_wingman">Yoldaş</button>
+        <button class="btn btn-outline-success" data-mode="deathmatch" data-i18n="mode_deathmatch">Ölüm Maçı</button>
+        <button class="btn btn-outline-success" data-mode="casual" data-i18n="mode_casual">Basit Eğlence</button>
+        <button class="btn btn-outline-success" data-mode="armsrace" data-i18n="mode_armsrace">Silah Yarışı</button>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label" data-i18n="select_medal">🎯 Hedef Madalya:</label>
+      <div class="btn-group w-100 flex-wrap" id="medalButtons">
+        <button class="btn text-white" style="background-color: silver;" data-medal="1">&nbsp;</button>
+        <button class="btn text-white" style="background-color: green;" data-medal="2">&nbsp;</button>
+        <button class="btn text-white" style="background-color: blue;" data-medal="3">&nbsp;</button>
+        <button class="btn text-white" style="background-color: purple;" data-medal="4">&nbsp;</button>
+        <button class="btn text-white" style="background-color: hotpink;" data-medal="5">&nbsp;</button>
+        <button class="btn text-white" style="background-color: red;" data-medal="6">&nbsp;</button>
+      </div>
+    </div>
+
+    <button onclick="hesapla()" class="btn btn-success w-100" data-i18n="calculate">💡 Hesapla</button>
+
+    <div id="result" class="mt-4"></div>
+  </div>
+</div>
+
+<script>
+  let selectedMode = null;
+  let selectedMedals = null;
+  let currentLang = localStorage.getItem("lang") || "tr";
+
+  const translations = {
+    tr: {
+      title: "🎖️ CS2 Madalya Hesaplayıcı",
+      select_mode: "🎮 Oyun Modunu Seç:",
+      select_medal: "🎯 Hedef Madalya:",
+      calculate: "💡 Hesapla",
+      error: "Lütfen oyun modu ve madalya seç!",
+      mode_competitive: "Rekabetçi",
+      mode_premier: "Premier",
+      mode_wingman: "Yoldaş",
+      mode_deathmatch: "Ölüm Maçı",
+      mode_casual: "Basit Eğlence",
+      mode_armsrace: "Silah Yarışı",
+      selected_mode: "Seçilen Mod:",
+      target_medal: "Hedef Madalya:",
+      required_xp: "Gerekli XP:",
+      boost: "Boost:",
+      normal: "Normal:",
+      overload: "Overload:",
+      total_time: "Toplam Süre:",
+      daily_play: "Günde Oynanması Gereken Süre:"
+    },
+    en: {
+      title: "🎖️ CS2 Medal Calculator",
+      select_mode: "🎮 Select Game Mode:",
+      select_medal: "🎯 Target Medal:",
+      calculate: "💡 Calculate",
+      error: "Please select a game mode and medal!",
+      mode_competitive: "Competitive",
+      mode_premier: "Premier",
+      mode_wingman: "Wingman",
+      mode_deathmatch: "Deathmatch",
+      mode_casual: "Casual",
+      mode_armsrace: "Arms Race",
+      selected_mode: "Selected Mode:",
+      target_medal: "Target Medal:",
+      required_xp: "Required XP:",
+      boost: "Boost:",
+      normal: "Normal:",
+      overload: "Overload:",
+      total_time: "Total Time:",
+      daily_play: "Required Daily Play Time:"
+    }
+  };
+
+  function applyLanguage() {
+    const elements = document.querySelectorAll("[data-i18n]");
+    elements.forEach(el => {
+      const key = el.getAttribute("data-i18n");
+      if (translations[currentLang][key]) {
+        el.innerHTML = translations[currentLang][key];
+      }
+    });
+  }
+
+  function toggleLanguage() {
+    currentLang = currentLang === "tr" ? "en" : "tr";
+    localStorage.setItem("lang", currentLang);
+    document.getElementById("languageBtn").innerHTML = currentLang === "tr" ? "🇹🇷&nbsp;" : "🇬🇧&nbsp;";
+    applyLanguage();
+  }
+
+  function toggleDarkMode() {
+    document.body.classList.toggle("dark-mode");
+    document.getElementById("mainCard").classList.toggle("dark-card");
+    document.getElementById("toggleBtn").innerHTML = document.body.classList.contains("dark-mode") ? "☀️&nbsp;" : "🌙&nbsp;";
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    applyLanguage();
+    document.getElementById("languageBtn").innerHTML = currentLang === "tr" ? "🇹🇷&nbsp;" : "🇬🇧&nbsp;";
+  });
+
+  const xpPerHourBase = {
+    competitive: 350,
+    premier: 350,
+    wingman: 225,
+    deathmatch: 125,
+    casual: 375,
+    armsrace: 250
+  };
+
+  const modeNames = {
+    competitive: "Competitive",
+    premier: "Premier",
+    wingman: "Wingman",
+    deathmatch: "Deathmatch",
+    casual: "Casual",
+    armsrace: "Arms Race"
+  };
+
+  document.querySelectorAll('#modeButtons .btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#modeButtons .btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedMode = btn.dataset.mode;
+    });
+  });
+
+  document.querySelectorAll('#medalButtons .btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#medalButtons .btn').forEach(b => {
+        b.classList.remove('active');
+        b.innerHTML = '&nbsp;';
+      });
+      selectedMedals = parseInt(btn.dataset.medal);
+      btn.classList.add('active');
+      btn.innerHTML = '✓';
+    });
+  });
+
+  function hesapla() {
+    const resultDiv = document.getElementById("result");
+
+    if (!selectedMode || !selectedMedals) {
+      resultDiv.innerHTML = `<div class="alert alert-danger">${translations[currentLang]["error"]}</div>`;
+      return;
+    }
+
+    const baseXPph = xpPerHourBase[selectedMode];
+    const boostXPph = baseXPph * 1.3;
+    const overloadXPph = baseXPph * 0.175;
+
+    const XP_PER_MEDAL = 195000;
+    const totalXP = selectedMedals * XP_PER_MEDAL;
+
+    const weeklyBoostXP = 5000;
+    const weeklyNormalXP = 6200;
+    const totalWeeks = 52;
+
+    const yearlyBoostXP = weeklyBoostXP * totalWeeks;
+    const yearlyNormalXP = weeklyNormalXP * totalWeeks;
+
+    const boostHours = yearlyBoostXP / boostXPph;
+    const normalHours = yearlyNormalXP / baseXPph;
+
+    let overloadXP = 0;
+    let overloadHours = 0;
+    let totalHours = 0;
+
+    if (totalXP <= yearlyBoostXP + yearlyNormalXP) {
+      const ratio = totalXP / (yearlyBoostXP + yearlyNormalXP);
+      totalHours = (boostHours + normalHours) * ratio;
+    } else {
+      overloadXP = totalXP - (yearlyBoostXP + yearlyNormalXP);
+      overloadHours = overloadXP / overloadXPph;
+      totalHours = boostHours + normalHours + overloadHours;
+    }
+
+    const dailyHours = totalHours / 365;
+
+    resultDiv.innerHTML = `
+      <div class="alert alert-info">
+        <p><strong>🎮 ${translations[currentLang]["selected_mode"]}</strong> ${modeNames[selectedMode]}</p>
+        <p><strong>🎯 ${translations[currentLang]["target_medal"]}</strong> ${selectedMedals}</p>
+        <p><strong>📦 ${translations[currentLang]["required_xp"]}</strong> ${totalXP.toLocaleString()} XP</p>
+        <p><strong>🟢 ${translations[currentLang]["boost"]}</strong> ${yearlyBoostXP.toLocaleString()} XP (${boostHours.toFixed(1)} saat)</p>
+        <p><strong>🟡 ${translations[currentLang]["normal"]}</strong> ${yearlyNormalXP.toLocaleString()} XP (${normalHours.toFixed(1)} saat)</p>
+        <p><strong>🔴 ${translations[currentLang]["overload"]}</strong> ${overloadXP > 0 ? overloadXP.toLocaleString() + " XP (" + overloadHours.toFixed(1) + " saat)" : (currentLang === "tr" ? "Yok" : "None")}</p>
+        <p><strong>🧮 ${translations[currentLang]["total_time"]}</strong> ${totalHours.toFixed(1)} saat</p>
+        <p class="highlight">⏰ ${translations[currentLang]["daily_play"]} ${dailyHours.toFixed(2)} saat</p>
+      </div>
+    `;
+  }
+</script>
+
+</body>
+</html>
